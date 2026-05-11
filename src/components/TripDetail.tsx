@@ -101,7 +101,7 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
 
         {/* Timeline */}
         <div>
-          {days.map((day, i) => {
+          {days.map((day) => {
             const dayNumber = Math.floor(
               (new Date(day + 'T00:00:00').getTime() - startD.getTime()) / 86400000
             ) + 1
