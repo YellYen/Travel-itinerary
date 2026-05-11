@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { Trip, Entry, StayEntry } from '../types'
-import { deleteEntry, saveEntry } from '../storage'
+import { deleteEntry, saveEntry, deleteTrip } from '../storage'
 import DaySection from './DaySection'
 import EntryModal from './EntryModal'
+import TripModal from './TripModal'
 
 interface Props {
   trip: Trip
@@ -33,25 +34,46 @@ function nonStayEntriesOnDay(entries: Entry[], day: string): Entry[] {
 }
 
 export default function TripDetail({ trip, onBack, onTripChange }: Props) {
-  const [showModal, setShowModal] = useState(false)
+  const [showEntryModal, setShowEntryModal] = useState(false)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
+  const [addForDate, setAddForDate] = useState<string | null>(null)
+  const [showTripModal, setShowTripModal] = useState(false)
 
   const days = eachDay(trip.startDate, trip.endDate)
 
-  function handleDelete(entry: Entry) {
+  function handleDeleteEntry(entry: Entry) {
     if (!confirm(`Delete "${entry.title}"?`)) return
     deleteEntry(trip.id, entry.id)
     onTripChange()
   }
 
-  function handleEdit(entry: Entry) {
+  function handleEditEntry(entry: Entry) {
     setEditEntry(entry)
-    setShowModal(true)
+    setAddForDate(null)
+    setShowEntryModal(true)
   }
 
-  function handleSaved(entry: Entry) {
+  function handleEntrySaved(entry: Entry) {
     saveEntry(trip.id, entry)
-    setShowModal(false)
+    setShowEntryModal(false)
+    setAddForDate(null)
+    onTripChange()
+  }
+
+  function handleAddForDay(date: string) {
+    setEditEntry(null)
+    setAddForDate(date)
+    setShowEntryModal(true)
+  }
+
+  function handleDeleteTrip() {
+    if (!confirm(`Delete "${trip.name}"? All entries will be lost.`)) return
+    deleteTrip(trip.id)
+    onBack()
+  }
+
+  function handleTripSaved() {
+    setShowTripModal(false)
     onTripChange()
   }
 
@@ -62,14 +84,26 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
-          <div>
+          <div className="flex-1 min-w-0 mr-3">
             <button
               onClick={onBack}
               className="text-sm text-slate-400 hover:text-slate-600 transition-colors mb-2 flex items-center gap-1"
             >
               ← All trips
             </button>
-            <h1 className="text-2xl font-bold text-slate-800">{trip.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-800 truncate">{trip.name}</h1>
+              <button
+                onClick={() => setShowTripModal(true)}
+                className="text-slate-400 hover:text-blue-600 transition-colors p-1 shrink-0"
+                title="Edit trip"
+              >✏️</button>
+              <button
+                onClick={handleDeleteTrip}
+                className="text-slate-400 hover:text-red-600 transition-colors p-1 shrink-0"
+                title="Delete trip"
+              >🗑️</button>
+            </div>
             <p className="text-slate-500 text-sm mt-0.5">
               {new Date(trip.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
               {' – '}
@@ -77,7 +111,7 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
             </p>
           </div>
           <button
-            onClick={() => { setEditEntry(null); setShowModal(true) }}
+            onClick={() => { setEditEntry(null); setAddForDate(null); setShowEntryModal(true) }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 shrink-0"
           >
             <span className="text-base leading-none">+</span> Add entry
@@ -112,8 +146,9 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
                 dayNumber={dayNumber}
                 entries={nonStayEntriesOnDay(trip.entries, day)}
                 stayEntries={staysOnDay(trip.entries, day)}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                onEdit={handleEditEntry}
+                onDelete={handleDeleteEntry}
+                onAdd={() => handleAddForDay(day)}
               />
             )
           })}
@@ -126,13 +161,22 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
         )}
       </div>
 
-      {showModal && (
+      {showEntryModal && (
         <EntryModal
           tripStartDate={trip.startDate}
           tripEndDate={trip.endDate}
           existing={editEntry}
-          onClose={() => setShowModal(false)}
-          onSaved={handleSaved}
+          defaultDate={addForDate ?? undefined}
+          onClose={() => { setShowEntryModal(false); setAddForDate(null) }}
+          onSaved={handleEntrySaved}
+        />
+      )}
+
+      {showTripModal && (
+        <TripModal
+          existing={trip}
+          onClose={() => setShowTripModal(false)}
+          onSaved={handleTripSaved}
         />
       )}
     </div>

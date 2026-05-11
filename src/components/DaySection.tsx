@@ -8,6 +8,7 @@ interface Props {
   stayEntries: StayEntry[]  // stays that cover this day
   onEdit: (entry: Entry) => void
   onDelete: (entry: Entry) => void
+  onAdd: () => void
 }
 
 function formatDayHeader(date: string, dayNumber: number): string {
@@ -26,18 +27,27 @@ function sortEntries(entries: Entry[]): Entry[] {
   })
 }
 
-export default function DaySection({ date, dayNumber, entries, stayEntries, onEdit, onDelete }: Props) {
+export default function DaySection({ date, dayNumber, entries, stayEntries, onEdit, onDelete, onAdd }: Props) {
   const sorted = sortEntries(entries)
   const hasContent = sorted.length > 0 || stayEntries.length > 0
 
   return (
     <div className="relative">
       {/* Day header */}
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-2 h-2 rounded-full bg-slate-300 shrink-0 ml-1" />
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-          {formatDayHeader(date, dayNumber)}
-        </h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-slate-300 shrink-0 ml-1" />
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+            {formatDayHeader(date, dayNumber)}
+          </h3>
+        </div>
+        <button
+          onClick={onAdd}
+          className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-blue-50"
+          title="Add entry for this day"
+        >
+          <span className="text-base leading-none">+</span>
+        </button>
       </div>
 
       <div className="ml-5 pl-4 border-l-2 border-slate-100 pb-6 space-y-2">

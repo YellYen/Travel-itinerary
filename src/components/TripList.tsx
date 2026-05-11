@@ -80,7 +80,7 @@ export default function TripList({ trips, onSelect, onTripsChange }: Props) {
                       <span>{trip.entries.length} {trip.entries.length === 1 ? 'entry' : 'entries'}</span>
                     </div>
                   </div>
-                  <div className="flex gap-1 ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 ml-3 opacity-50 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={e => handleEdit(e, trip)}
                       className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"

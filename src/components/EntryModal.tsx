@@ -6,6 +6,7 @@ interface Props {
   tripStartDate: string
   tripEndDate: string
   existing: Entry | null
+  defaultDate?: string
   onClose: () => void
   onSaved: (entry: Entry) => void
 }
@@ -40,10 +41,10 @@ function labelClass() {
   return 'block text-sm font-medium text-slate-700 mb-1'
 }
 
-export default function EntryModal({ tripStartDate, tripEndDate, existing, onClose, onSaved }: Props) {
+export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, onClose, onSaved }: Props) {
   const [type, setType] = useState<EntryType>(existing?.type ?? 'travel')
   const [title, setTitle] = useState(existing?.title ?? '')
-  const [date, setDate] = useState(existing?.date ?? tripStartDate)
+  const [date, setDate] = useState(existing?.date ?? defaultDate ?? tripStartDate)
   const [startTime, setStartTime] = useState(existing?.startTime ?? '')
   const [endTime, setEndTime] = useState(existing?.endTime ?? '')
   const [confirmation, setConfirmation] = useState(existing?.confirmationNumber ?? '')
@@ -73,7 +74,21 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, onClo
   const [placeAddress, setPlaceAddress] = useState(placeExisting?.address ?? '')
 
   function buildEntry(): Entry | null {
-    if (!title.trim()) { setError('Title is required'); return null }
+    if (type !== 'travel' && !title.trim()) { setError('Title is required'); return null }
+
+    if (type === 'travel') {
+      if (!origin.trim() || !destination.trim()) { setError('Origin and destination are required'); return null }
+      const base = {
+        id: existing?.id ?? generateId(),
+        title: `${origin.trim()} → ${destination.trim()}`,
+        date,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        confirmationNumber: confirmation.trim() || undefined,
+        notes: notes.trim() || undefined,
+      }
+      return { ...base, type: 'travel', mode: travelMode, flightNumber: flightNumber.trim() || undefined, origin: origin.trim(), destination: destination.trim() } as TravelEntry
+    }
 
     const base = {
       id: existing?.id ?? generateId(),
@@ -83,11 +98,6 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, onClo
       endTime: endTime || undefined,
       confirmationNumber: confirmation.trim() || undefined,
       notes: notes.trim() || undefined,
-    }
-
-    if (type === 'travel') {
-      if (!origin.trim() || !destination.trim()) { setError('Origin and destination are required'); return null }
-      return { ...base, type: 'travel', mode: travelMode, flightNumber: flightNumber.trim() || undefined, origin: origin.trim(), destination: destination.trim() } as TravelEntry
     }
     if (type === 'stay') {
       if (!checkIn || !checkOut) { setError('Check-in and check-out dates are required'); return null }
@@ -150,18 +160,19 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, onClo
             </div>
           )}
 
-          {/* Title */}
-          <div>
-            <label className={labelClass()}>Title</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-              placeholder={
-                type === 'travel' ? 'e.g. Tokyo → Osaka' :
-                type === 'stay' ? 'e.g. Shinjuku Hotel' :
-                type === 'experience' ? 'e.g. Tea ceremony' :
-                'e.g. Senso-ji Temple'
-              }
-              className={inputClass()} />
-          </div>
+          {/* Title — not shown for travel (auto-generated from origin → destination) */}
+          {type !== 'travel' && (
+            <div>
+              <label className={labelClass()}>Name</label>
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+                placeholder={
+                  type === 'stay' ? 'e.g. Shinjuku Hotel' :
+                  type === 'experience' ? 'e.g. Tea ceremony' :
+                  'e.g. Senso-ji Temple'
+                }
+                className={inputClass()} />
+            </div>
+          )}
 
           {/* Travel-specific */}
           {type === 'travel' && (

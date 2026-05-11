@@ -68,9 +68,9 @@ export default function EntryCard({ entry, isStayBanner, onEdit, onDelete }: Pro
             <span className="text-xs text-slate-400 truncate hidden sm:block">#{entry.confirmationNumber}</span>
           )}
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
-          <button onClick={onEdit} className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors text-xs">✏️</button>
-          <button onClick={onDelete} className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors text-xs">🗑️</button>
+        <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
+          <button onClick={onEdit} className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors text-xs">✏️</button>
+          <button onClick={onDelete} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors text-xs">🗑️</button>
         </div>
       </div>
     )
@@ -100,9 +100,9 @@ export default function EntryCard({ entry, isStayBanner, onEdit, onDelete }: Pro
             )}
           </div>
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={onEdit} className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors">✏️</button>
-          <button onClick={onDelete} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors">🗑️</button>
+        <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity shrink-0">
+          <button onClick={onEdit} className="p-2 rounded-md text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors">✏️</button>
+          <button onClick={onDelete} className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors">🗑️</button>
         </div>
       </div>
     </div>
