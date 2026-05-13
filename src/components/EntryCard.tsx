@@ -94,9 +94,15 @@ export default function EntryCard({ entry, isStayBanner, currency, onEdit }: Pro
               target="_blank"
               rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
-              className="text-slate-400 hover:text-blue-600 transition-colors text-sm"
+              className="text-slate-400 hover:text-blue-600 transition-colors"
               title="Open booking link"
-            >🔗</a>
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h8a1 1 0 001-1V8" />
+                <path d="M8 1h4v4" />
+                <path d="M12 1L5.5 7.5" />
+              </svg>
+            </a>
           )}
         </div>
       </div>

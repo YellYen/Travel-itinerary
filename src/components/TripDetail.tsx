@@ -131,12 +131,6 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
     setShowEntryModal(true)
   }
 
-  function handleDeleteTrip() {
-    if (!confirm(`Delete "${trip.name}"? All entries will be lost.`)) return
-    deleteTrip(trip.id)
-    onBack()
-  }
-
   function handleTripSaved() {
     setShowTripModal(false)
     onTripChange()
@@ -160,10 +154,6 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
               <h1 className="text-2xl font-bold text-slate-800 truncate">{trip.name}</h1>
               <button onClick={() => setShowTripModal(true)}
                 className="text-slate-400 hover:text-blue-600 transition-colors p-1 shrink-0" title="Edit trip">✏️</button>
-              <button onClick={handleDeleteTrip}
-                className="text-slate-400 hover:text-red-600 transition-colors p-1 shrink-0" title="Delete trip">🗑️</button>
-              <button onClick={() => downloadIcs(trip)}
-                className="text-slate-400 hover:text-green-600 transition-colors p-1 shrink-0" title="Export to calendar">📅</button>
             </div>
             <p className="text-slate-500 text-sm mt-0.5">
               {new Date(trip.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
@@ -173,6 +163,18 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
                 <span className="ml-3 font-medium text-slate-700">{currency}{cost.toLocaleString()} total</span>
               )}
             </p>
+            <button
+              onClick={() => downloadIcs(trip)}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs border border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="0.75" y="1.75" width="10.5" height="9.5" rx="1.25" />
+                <path d="M0.75 5h10.5" />
+                <path d="M3.5 0.75v2" />
+                <path d="M8.5 0.75v2" />
+              </svg>
+              Export to calendar
+            </button>
           </div>
           <button
             onClick={() => { setEditEntry(null); setAddForDate(null); setShowEntryModal(true) }}
@@ -259,6 +261,11 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
           existing={trip}
           onClose={() => setShowTripModal(false)}
           onSaved={handleTripSaved}
+          onDelete={() => {
+            if (!confirm(`Delete "${trip.name}"? All entries will be lost.`)) return
+            deleteTrip(trip.id)
+            onBack()
+          }}
         />
       )}
     </div>

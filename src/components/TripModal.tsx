@@ -6,11 +6,12 @@ interface Props {
   existing: Trip | null
   onClose: () => void
   onSaved: () => void
+  onDelete?: () => void
 }
 
 const ic = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-export default function TripModal({ existing, onClose, onSaved }: Props) {
+export default function TripModal({ existing, onClose, onSaved, onDelete }: Props) {
   const [name, setName] = useState(existing?.name ?? '')
   const [startDate, setStartDate] = useState(existing?.startDate ?? '')
   const [endDate, setEndDate] = useState(existing?.endDate ?? '')
@@ -98,6 +99,15 @@ export default function TripModal({ existing, onClose, onSaved }: Props) {
               {existing ? 'Save changes' : 'Create trip'}
             </button>
           </div>
+          {existing && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-full border border-red-200 text-red-500 hover:bg-red-50 rounded-lg py-2 text-sm font-medium transition-colors"
+            >
+              Delete trip
+            </button>
+          )}
         </form>
       </div>
     </div>
