@@ -45,10 +45,21 @@ function entrySubtitle(entry: Entry): string | null {
   return null
 }
 
+function fmt12h(t: string): string {
+  const [hStr, mStr] = t.split(':')
+  let h = parseInt(hStr)
+  const m = parseInt(mStr)
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  if (h > 12) h -= 12
+  if (h === 0) h = 12
+  return `${h}:${String(m).padStart(2, '0')} ${suffix}`
+}
+
 function timeDisplay(entry: Entry): string | null {
   if (entry.type === 'stay') return null
   if (entry.startTime) {
-    return entry.endTime ? `${entry.startTime} – ${entry.endTime}` : entry.startTime
+    const start = fmt12h(entry.startTime)
+    return entry.endTime ? `${start} – ${fmt12h(entry.endTime)}` : start
   }
   return null
 }

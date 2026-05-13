@@ -41,6 +41,31 @@ function labelClass() {
   return 'block text-sm font-medium text-slate-700 mb-1'
 }
 
+function parseTo24h(raw: string): string | null {
+  const s = raw.trim()
+  if (!s) return null
+
+  const plain = s.match(/^(\d{1,2}):(\d{2})$/)
+  if (plain) {
+    const h = parseInt(plain[1]), m = parseInt(plain[2])
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59)
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  const twelve = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i)
+  if (twelve) {
+    let h = parseInt(twelve[1])
+    const m = parseInt(twelve[2] ?? '0')
+    const meridiem = twelve[3].toLowerCase()
+    if (h < 1 || h > 12 || m < 0 || m > 59) return null
+    if (meridiem === 'am' && h === 12) h = 0
+    if (meridiem === 'pm' && h !== 12) h += 12
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  return null
+}
+
 export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, onClose, onSaved }: Props) {
   const [type, setType] = useState<EntryType>(existing?.type ?? 'travel')
   const [title, setTitle] = useState(existing?.title ?? '')
@@ -76,14 +101,19 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
   function buildEntry(): Entry | null {
     if (type !== 'travel' && !title.trim()) { setError('Title is required'); return null }
 
+    const parsedStart = startTime ? parseTo24h(startTime) : null
+    const parsedEnd = endTime ? parseTo24h(endTime) : null
+    if (startTime && !parsedStart) { setError('Invalid start time — try "9:00 AM" or "14:30"'); return null }
+    if (endTime && !parsedEnd) { setError('Invalid end time — try "9:00 AM" or "14:30"'); return null }
+
     if (type === 'travel') {
       if (!origin.trim() || !destination.trim()) { setError('Origin and destination are required'); return null }
       const base = {
         id: existing?.id ?? generateId(),
         title: `${origin.trim()} → ${destination.trim()}`,
         date,
-        startTime: startTime || undefined,
-        endTime: endTime || undefined,
+        startTime: parsedStart ?? undefined,
+        endTime: parsedEnd ?? undefined,
         confirmationNumber: confirmation.trim() || undefined,
         notes: notes.trim() || undefined,
       }
@@ -94,8 +124,8 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
       id: existing?.id ?? generateId(),
       title: title.trim(),
       date,
-      startTime: startTime || undefined,
-      endTime: endTime || undefined,
+      startTime: parsedStart ?? undefined,
+      endTime: parsedEnd ?? undefined,
       confirmationNumber: confirmation.trim() || undefined,
       notes: notes.trim() || undefined,
     }
@@ -295,11 +325,15 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass()}>Start time</label>
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={inputClass()} />
+                <input type="text" inputMode="numeric" value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  placeholder="e.g. 9:00 AM" className={inputClass()} />
               </div>
               <div>
                 <label className={labelClass()}>End time</label>
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className={inputClass()} />
+                <input type="text" inputMode="numeric" value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  placeholder="e.g. 2:30 PM" className={inputClass()} />
               </div>
             </div>
           )}
