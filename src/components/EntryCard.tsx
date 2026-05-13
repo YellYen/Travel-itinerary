@@ -3,15 +3,15 @@ import type { Entry, TravelEntry, StayEntry } from '../types'
 interface Props {
   entry: Entry
   isStayBanner?: boolean
+  currency?: string
   onEdit: () => void
-  onDelete: () => void
 }
 
 const TYPE_CONFIG = {
-  travel: { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
-  stay:   { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
-  experience: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-100 text-orange-700', dot: 'bg-orange-500' },
-  place: { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
+  travel:     { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
+  stay:       { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700' },
+  experience: { bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-100 text-orange-700' },
+  place:      { bg: 'bg-green-50',  border: 'border-green-200',  badge: 'bg-green-100 text-green-700' },
 }
 
 const TRAVEL_MODE_ICON: Record<string, string> = {
@@ -32,14 +32,10 @@ function entryIcon(entry: Entry): string {
 function entrySubtitle(entry: Entry): string | null {
   if (entry.type === 'travel') {
     const t = entry as TravelEntry
-    const parts = [t.origin, t.destination].filter(Boolean)
-    const label = parts.join(' → ')
+    const label = [t.origin, t.destination].filter(Boolean).join(' → ')
     return t.flightNumber ? `${t.flightNumber} · ${label}` : label
   }
-  if (entry.type === 'stay') {
-    const s = entry as StayEntry
-    return s.address ?? null
-  }
+  if (entry.type === 'stay') return (entry as StayEntry).address ?? null
   if (entry.type === 'experience') return entry.location ?? null
   if (entry.type === 'place') return entry.address ?? null
   return null
@@ -64,14 +60,25 @@ function timeDisplay(entry: Entry): string | null {
   return null
 }
 
-export default function EntryCard({ entry, isStayBanner, onEdit, onDelete }: Props) {
+function sentenceCase(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export default function EntryCard({ entry, isStayBanner, currency, onEdit }: Props) {
   const cfg = TYPE_CONFIG[entry.type]
   const subtitle = entrySubtitle(entry)
   const time = timeDisplay(entry)
 
+  const costLabel = entry.cost != null
+    ? `${currency ?? ''}${entry.cost.toLocaleString()}`
+    : null
+
   if (isStayBanner) {
     return (
-      <div className={`rounded-lg border ${cfg.border} ${cfg.bg} px-3 py-2 flex items-center justify-between group`}>
+      <div
+        onClick={onEdit}
+        className={`rounded-lg border ${cfg.border} ${cfg.bg} px-3 py-2 flex items-center justify-between cursor-pointer active:opacity-80`}
+      >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base">{entryIcon(entry)}</span>
           <span className="text-sm font-medium text-slate-700 truncate">{entry.title}</span>
@@ -79,41 +86,60 @@ export default function EntryCard({ entry, isStayBanner, onEdit, onDelete }: Pro
             <span className="text-xs text-slate-400 truncate hidden sm:block">#{entry.confirmationNumber}</span>
           )}
         </div>
-        <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
-          <button onClick={onEdit} className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors text-xs">✏️</button>
-          <button onClick={onDelete} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors text-xs">🗑️</button>
+        <div className="flex items-center gap-2 ml-2 shrink-0">
+          {costLabel && <span className="text-xs text-slate-500 font-medium">{costLabel}</span>}
+          {entry.bookingUrl && (
+            <a
+              href={entry.bookingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-slate-400 hover:text-blue-600 transition-colors text-sm"
+              title="Open booking link"
+            >🔗</a>
+          )}
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} p-3 group`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          <span className="text-xl mt-0.5 shrink-0">{entryIcon(entry)}</span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-slate-800 text-sm">{entry.title}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${cfg.badge}`}>
-                {entry.type}
-              </span>
-            </div>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>}
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {time && <span className="text-xs text-slate-500 font-mono">{time}</span>}
-              {entry.confirmationNumber && (
-                <span className="text-xs text-slate-400">#{entry.confirmationNumber}</span>
-              )}
-            </div>
-            {entry.notes && (
-              <p className="text-xs text-slate-500 mt-1.5 bg-white/60 rounded px-2 py-1 border border-white/80">{entry.notes}</p>
+    <div
+      onClick={onEdit}
+      className={`rounded-xl border ${cfg.border} ${cfg.bg} p-3 cursor-pointer active:opacity-80`}
+    >
+      <div className="flex items-start gap-3 min-w-0">
+        <span className="text-xl mt-0.5 shrink-0">{entryIcon(entry)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-slate-800 text-sm">{entry.title}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${cfg.badge}`}>
+              {sentenceCase(entry.type)}
+            </span>
+            {costLabel && (
+              <span className="text-xs text-slate-500 font-medium">{costLabel}</span>
+            )}
+            {entry.bookingUrl && (
+              <a
+                href={entry.bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="text-slate-400 hover:text-blue-600 transition-colors text-sm"
+                title="Open booking link"
+              >🔗</a>
             )}
           </div>
-        </div>
-        <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity shrink-0">
-          <button onClick={onEdit} className="p-2 rounded-md text-slate-400 hover:text-blue-600 hover:bg-white/70 transition-colors">✏️</button>
-          <button onClick={onDelete} className="p-2 rounded-md text-slate-400 hover:text-red-600 hover:bg-white/70 transition-colors">🗑️</button>
+          {subtitle && <p className="text-xs text-slate-500 mt-0.5 truncate">{subtitle}</p>}
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {time && <span className="text-xs text-slate-500 font-mono">{time}</span>}
+            {entry.confirmationNumber && (
+              <span className="text-xs text-slate-400">#{entry.confirmationNumber}</span>
+            )}
+          </div>
+          {entry.notes && (
+            <p className="text-xs text-slate-500 mt-1.5 bg-white/60 rounded px-2 py-1 border border-white/80">{entry.notes}</p>
+          )}
         </div>
       </div>
     </div>

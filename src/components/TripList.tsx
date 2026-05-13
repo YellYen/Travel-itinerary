@@ -20,6 +20,11 @@ function nightCount(start: string, end: string) {
   return Math.max(0, diff)
 }
 
+function totalCost(trip: Trip): number | null {
+  const costs = trip.entries.map(e => e.cost).filter((c): c is number => c != null)
+  return costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null
+}
+
 export default function TripList({ trips, onSelect, onTripsChange }: Props) {
   const [showModal, setShowModal] = useState(false)
   const [editTrip, setEditTrip] = useState<Trip | null>(null)
@@ -78,6 +83,7 @@ export default function TripList({ trips, onSelect, onTripsChange }: Props) {
                       <span>{nightCount(trip.startDate, trip.endDate)} nights</span>
                       <span>·</span>
                       <span>{trip.entries.length} {trip.entries.length === 1 ? 'entry' : 'entries'}</span>
+                      {(() => { const c = totalCost(trip); return c != null ? <><span>·</span><span className="font-medium text-slate-500">{trip.currency ?? ''}{c.toLocaleString()}</span></> : null })()}
                     </div>
                   </div>
                   <div className="flex gap-1 ml-3 opacity-50 group-hover:opacity-100 transition-opacity">

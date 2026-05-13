@@ -9,6 +9,7 @@ interface Props {
   defaultDate?: string
   onClose: () => void
   onSaved: (entry: Entry) => void
+  onDelete?: () => void
 }
 
 const ENTRY_TYPES: { value: EntryType; label: string; icon: string }[] = [
@@ -66,13 +67,15 @@ function parseTo24h(raw: string): string | null {
   return null
 }
 
-export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, onClose, onSaved }: Props) {
+export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, onClose, onSaved, onDelete }: Props) {
   const [type, setType] = useState<EntryType>(existing?.type ?? 'travel')
   const [title, setTitle] = useState(existing?.title ?? '')
   const [date, setDate] = useState(existing?.date ?? defaultDate ?? tripStartDate)
   const [startTime, setStartTime] = useState(existing?.startTime ?? '')
   const [endTime, setEndTime] = useState(existing?.endTime ?? '')
   const [confirmation, setConfirmation] = useState(existing?.confirmationNumber ?? '')
+  const [cost, setCost] = useState(existing?.cost != null ? String(existing.cost) : '')
+  const [bookingUrl, setBookingUrl] = useState(existing?.bookingUrl ?? '')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [error, setError] = useState('')
 
@@ -106,6 +109,9 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
     if (startTime && !parsedStart) { setError('Invalid start time — try "9:00 AM" or "14:30"'); return null }
     if (endTime && !parsedEnd) { setError('Invalid end time — try "9:00 AM" or "14:30"'); return null }
 
+    const costVal = cost.trim() ? parseFloat(cost.trim()) : undefined
+    if (cost.trim() && (isNaN(costVal!) || costVal! < 0)) { setError('Cost must be a positive number'); return null }
+
     if (type === 'travel') {
       if (!origin.trim() || !destination.trim()) { setError('Origin and destination are required'); return null }
       const base = {
@@ -115,6 +121,8 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
         startTime: parsedStart ?? undefined,
         endTime: parsedEnd ?? undefined,
         confirmationNumber: confirmation.trim() || undefined,
+        cost: costVal,
+        bookingUrl: bookingUrl.trim() || undefined,
         notes: notes.trim() || undefined,
       }
       return { ...base, type: 'travel', mode: travelMode, flightNumber: flightNumber.trim() || undefined, origin: origin.trim(), destination: destination.trim() } as TravelEntry
@@ -127,6 +135,8 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
       startTime: parsedStart ?? undefined,
       endTime: parsedEnd ?? undefined,
       confirmationNumber: confirmation.trim() || undefined,
+      cost: costVal,
+      bookingUrl: bookingUrl.trim() || undefined,
       notes: notes.trim() || undefined,
     }
     if (type === 'stay') {
@@ -338,11 +348,25 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
             </div>
           )}
 
-          {/* Confirmation number */}
+          {/* Confirmation number + Cost */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass()}>Confirmation # <span className="text-slate-400 font-normal">(optional)</span></label>
+              <input type="text" value={confirmation} onChange={e => setConfirmation(e.target.value)}
+                placeholder="e.g. ABC123" className={inputClass()} />
+            </div>
+            <div>
+              <label className={labelClass()}>Cost <span className="text-slate-400 font-normal">(optional)</span></label>
+              <input type="text" inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)}
+                placeholder="e.g. 120" className={inputClass()} />
+            </div>
+          </div>
+
+          {/* Booking URL */}
           <div>
-            <label className={labelClass()}>Confirmation number <span className="text-slate-400 font-normal">(optional)</span></label>
-            <input type="text" value={confirmation} onChange={e => setConfirmation(e.target.value)}
-              placeholder="e.g. ABC123" className={inputClass()} />
+            <label className={labelClass()}>Booking link <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="url" value={bookingUrl} onChange={e => setBookingUrl(e.target.value)}
+              placeholder="https://…" className={inputClass()} />
           </div>
 
           {/* Notes */}
@@ -365,6 +389,16 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
               {existing ? 'Save changes' : 'Add entry'}
             </button>
           </div>
+
+          {existing && onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-full border border-red-200 text-red-600 rounded-lg py-2 text-sm font-medium hover:bg-red-50 transition-colors"
+            >
+              Delete entry
+            </button>
+          )}
         </form>
       </div>
     </div>

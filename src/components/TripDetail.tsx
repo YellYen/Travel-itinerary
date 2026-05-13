@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Trip, Entry, StayEntry } from '../types'
 import { deleteEntry, saveEntry, deleteTrip } from '../storage'
 import DaySection from './DaySection'
@@ -24,8 +24,13 @@ function eachDay(startDate: string, endDate: string): string[] {
 
 function staysOnDay(entries: Entry[], day: string): StayEntry[] {
   return entries.filter(
-    (e): e is StayEntry =>
-      e.type === 'stay' && e.checkIn <= day && e.checkOut > day
+    (e): e is StayEntry => e.type === 'stay' && e.checkIn <= day && e.checkOut > day
+  )
+}
+
+function staysCheckingOutOnDay(entries: Entry[], day: string): StayEntry[] {
+  return entries.filter(
+    (e): e is StayEntry => e.type === 'stay' && e.checkOut === day
   )
 }
 
@@ -33,19 +38,79 @@ function nonStayEntriesOnDay(entries: Entry[], day: string): Entry[] {
   return entries.filter(e => e.type !== 'stay' && e.date === day)
 }
 
+function generateIcs(trip: Trip): string {
+  const escape = (s: string) => s.replace(/[,;\\]/g, c => `\\${c}`).replace(/\n/g, '\\n')
+  const fmtDate = (d: string) => d.replace(/-/g, '')
+  const fmtDateTime = (d: string, t?: string) =>
+    t ? `${fmtDate(d)}T${t.replace(':', '')}00` : fmtDate(d)
+
+  const lines: string[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Travel Itinerary//EN',
+    'CALSCALE:GREGORIAN',
+  ]
+
+  for (const e of trip.entries) {
+    lines.push('BEGIN:VEVENT')
+    lines.push(`UID:${e.id}@travel-itinerary`)
+    lines.push(`SUMMARY:${escape(e.title)}`)
+    if (e.notes) lines.push(`DESCRIPTION:${escape(e.notes)}`)
+
+    if (e.type === 'stay') {
+      lines.push(`DTSTART;VALUE=DATE:${fmtDate(e.checkIn)}`)
+      lines.push(`DTEND;VALUE=DATE:${fmtDate(e.checkOut)}`)
+      if (e.address) lines.push(`LOCATION:${escape(e.address)}`)
+    } else {
+      lines.push(`DTSTART:${fmtDateTime(e.date, e.startTime)}`)
+      lines.push(`DTEND:${fmtDateTime(e.date, e.endTime ?? e.startTime)}`)
+    }
+    lines.push('END:VEVENT')
+  }
+
+  lines.push('END:VCALENDAR')
+  return lines.join('\r\n')
+}
+
+function downloadIcs(trip: Trip) {
+  const ics = generateIcs(trip)
+  const blob = new Blob([ics], { type: 'text/calendar' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${trip.name.replace(/\s+/g, '-')}.ics`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function totalCost(trip: Trip): number | null {
+  const costs = trip.entries.map(e => e.cost).filter((c): c is number => c != null)
+  return costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null
+}
+
 export default function TripDetail({ trip, onBack, onTripChange }: Props) {
+  const today = new Date().toISOString().slice(0, 10)
+  const days = eachDay(trip.startDate, trip.endDate)
+
+  const todayInTrip = days.includes(today)
+  const firstVisibleDay = todayInTrip ? today : days[0]
+
   const [showEntryModal, setShowEntryModal] = useState(false)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const [addForDate, setAddForDate] = useState<string | null>(null)
   const [showTripModal, setShowTripModal] = useState(false)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    const state: Record<string, boolean> = {}
+    for (const d of days) state[d] = d < today
+    return state
+  })
 
-  const days = eachDay(trip.startDate, trip.endDate)
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  function handleDeleteEntry(entry: Entry) {
-    if (!confirm(`Delete "${entry.title}"?`)) return
-    deleteEntry(trip.id, entry.id)
-    onTripChange()
-  }
+  useEffect(() => {
+    const el = dayRefs.current[firstVisibleDay]
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [firstVisibleDay])
 
   function handleEditEntry(entry: Entry) {
     setEditEntry(entry)
@@ -77,37 +142,36 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
     onTripChange()
   }
 
+  const cost = totalCost(trip)
+  const currency = trip.currency ?? ''
   const startD = new Date(trip.startDate + 'T00:00:00')
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex items-start justify-between mb-6">
           <div className="flex-1 min-w-0 mr-3">
-            <button
-              onClick={onBack}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors mb-2 flex items-center gap-1"
-            >
+            <button onClick={onBack}
+              className="text-sm text-slate-400 hover:text-slate-600 transition-colors mb-2 flex items-center gap-1">
               ← All trips
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-slate-800 truncate">{trip.name}</h1>
-              <button
-                onClick={() => setShowTripModal(true)}
-                className="text-slate-400 hover:text-blue-600 transition-colors p-1 shrink-0"
-                title="Edit trip"
-              >✏️</button>
-              <button
-                onClick={handleDeleteTrip}
-                className="text-slate-400 hover:text-red-600 transition-colors p-1 shrink-0"
-                title="Delete trip"
-              >🗑️</button>
+              <button onClick={() => setShowTripModal(true)}
+                className="text-slate-400 hover:text-blue-600 transition-colors p-1 shrink-0" title="Edit trip">✏️</button>
+              <button onClick={handleDeleteTrip}
+                className="text-slate-400 hover:text-red-600 transition-colors p-1 shrink-0" title="Delete trip">🗑️</button>
+              <button onClick={() => downloadIcs(trip)}
+                className="text-slate-400 hover:text-green-600 transition-colors p-1 shrink-0" title="Export to calendar">📅</button>
             </div>
             <p className="text-slate-500 text-sm mt-0.5">
               {new Date(trip.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
               {' – '}
               {new Date(trip.endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              {cost != null && (
+                <span className="ml-3 font-medium text-slate-700">{currency}{cost.toLocaleString()} total</span>
+              )}
             </p>
           </div>
           <button
@@ -117,6 +181,13 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
             <span className="text-base leading-none">+</span> Add entry
           </button>
         </div>
+
+        {/* Trip notes */}
+        {trip.notes && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-sm text-slate-700 whitespace-pre-wrap">
+            {trip.notes}
+          </div>
+        )}
 
         {/* Legend */}
         <div className="flex flex-wrap gap-3 mb-6 text-xs text-slate-500">
@@ -140,16 +211,21 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
               (new Date(day + 'T00:00:00').getTime() - startD.getTime()) / 86400000
             ) + 1
             return (
-              <DaySection
-                key={day}
-                date={day}
-                dayNumber={dayNumber}
-                entries={nonStayEntriesOnDay(trip.entries, day)}
-                stayEntries={staysOnDay(trip.entries, day)}
-                onEdit={handleEditEntry}
-                onDelete={handleDeleteEntry}
-                onAdd={() => handleAddForDay(day)}
-              />
+              <div key={day} ref={el => { dayRefs.current[day] = el }}>
+                <DaySection
+                  date={day}
+                  dayNumber={dayNumber}
+                  entries={nonStayEntriesOnDay(trip.entries, day)}
+                  stayEntries={staysOnDay(trip.entries, day)}
+                  checkOutStays={staysCheckingOutOnDay(trip.entries, day)}
+                  currency={currency}
+                  isToday={day === today}
+                  isCollapsed={collapsed[day] ?? false}
+                  onEdit={handleEditEntry}
+                  onAdd={() => handleAddForDay(day)}
+                  onToggleCollapse={() => setCollapsed(c => ({ ...c, [day]: !c[day] }))}
+                />
+              </div>
             )
           })}
         </div>
@@ -169,6 +245,12 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
           defaultDate={addForDate ?? undefined}
           onClose={() => { setShowEntryModal(false); setAddForDate(null) }}
           onSaved={handleEntrySaved}
+          onDelete={editEntry ? () => {
+            if (!confirm(`Delete "${editEntry.title}"?`)) return
+            deleteEntry(trip.id, editEntry.id)
+            setShowEntryModal(false)
+            onTripChange()
+          } : undefined}
         />
       )}
 

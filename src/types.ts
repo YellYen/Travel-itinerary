@@ -10,6 +10,8 @@ interface BaseEntry {
   startTime?: string   // HH:MM local time
   endTime?: string     // HH:MM local time
   confirmationNumber?: string
+  cost?: number
+  bookingUrl?: string
   notes?: string
 }
 
@@ -47,4 +49,6 @@ export interface Trip {
   startDate: string  // YYYY-MM-DD
   endDate: string    // YYYY-MM-DD
   entries: Entry[]
+  currency?: string
+  notes?: string
 }
