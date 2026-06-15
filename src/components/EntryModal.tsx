@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Entry, EntryType, TravelEntry, StayEntry, ExperienceEntry, PlaceEntry, TravelMode, AccommodationType } from '../types'
 import { generateId } from '../storage'
-import { CURRENCIES, getCurrencyByCode } from '../currencies'
+import { getCurrencyByCode } from '../currencies'
 
 interface Props {
   tripStartDate: string
