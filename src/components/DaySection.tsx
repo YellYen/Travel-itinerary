@@ -7,12 +7,9 @@ interface Props {
   entries: Entry[]
   stayEntries: StayEntry[]
   checkOutStays: StayEntry[]
-  currency?: string
   isToday?: boolean
-  isCollapsed: boolean
   onEdit: (entry: Entry) => void
   onAdd: () => void
-  onToggleCollapse: () => void
 }
 
 function formatDayHeader(date: string, dayNumber: number): string {
@@ -32,8 +29,8 @@ function sortEntries(entries: Entry[]): Entry[] {
 }
 
 export default function DaySection({
-  date, dayNumber, entries, stayEntries, checkOutStays, currency,
-  isToday, isCollapsed, onEdit, onAdd, onToggleCollapse,
+  date, dayNumber, entries, stayEntries, checkOutStays,
+  isToday, onEdit, onAdd,
 }: Props) {
   const sorted = sortEntries(entries)
   const checkIns = stayEntries.filter(s => s.checkIn === date)
@@ -43,10 +40,7 @@ export default function DaySection({
     <div className="relative">
       {/* Day header */}
       <div className="flex items-center justify-between mb-3">
-        <button
-          onClick={onToggleCollapse}
-          className="flex items-center gap-3 flex-1 min-w-0 text-left"
-        >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className={`w-2 h-2 rounded-full shrink-0 ml-1 ${isToday ? 'bg-blue-500' : 'bg-slate-300'}`} />
           <h3 className={`text-sm font-semibold uppercase tracking-wide ${isToday ? 'text-blue-600' : 'text-slate-500'}`}>
             {formatDayHeader(date, dayNumber)}
@@ -56,73 +50,57 @@ export default function DaySection({
               Today
             </span>
           )}
-          <span className="text-slate-300 text-xs ml-1">{isCollapsed ? '▸' : '▾'}</span>
+        </div>
+        <button
+          onClick={onAdd}
+          className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-blue-50 shrink-0"
+          title="Add entry for this day"
+        >
+          <span className="text-base leading-none">+</span>
         </button>
-        {!isCollapsed && (
-          <button
-            onClick={onAdd}
-            className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-blue-50 shrink-0"
-            title="Add entry for this day"
-          >
-            <span className="text-base leading-none">+</span>
-          </button>
-        )}
       </div>
 
-      {!isCollapsed && (
-        <div className="ml-5 pl-4 border-l-2 border-slate-100 pb-6 space-y-2">
-          {/* Check-out chips */}
-          {checkOutStays.map(stay => (
-            <div
-              key={`checkout-${stay.id}`}
-              onClick={() => onEdit(stay)}
-              className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 flex items-center gap-2 cursor-pointer active:opacity-80"
-            >
-              <span className="text-base">🚪</span>
-              <span className="text-sm text-purple-700 font-medium">Check out</span>
-              <span className="text-sm text-slate-600 truncate">· {stay.title}</span>
-            </div>
-          ))}
+      <div className="ml-5 pl-4 border-l-2 border-slate-100 pb-6 space-y-2">
+        {/* Check-out chips */}
+        {checkOutStays.map(stay => (
+          <div
+            key={`checkout-${stay.id}`}
+            onClick={() => onEdit(stay)}
+            className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 flex items-center gap-2 cursor-pointer active:opacity-80"
+          >
+            <span className="text-base">🚪</span>
+            <span className="text-sm text-purple-700 font-medium">Check out</span>
+            <span className="text-sm text-slate-600 truncate">· {stay.title}</span>
+          </div>
+        ))}
 
-          {/* Stay banners */}
-          {stayEntries.map(stay => (
-            <EntryCard
-              key={stay.id}
-              entry={stay}
-              isStayBanner
-              currency={currency}
-              onEdit={() => onEdit(stay)}
-            />
-          ))}
+        {/* Stay banners */}
+        {stayEntries.map(stay => (
+          <EntryCard key={stay.id} entry={stay} isStayBanner onEdit={() => onEdit(stay)} />
+        ))}
 
-          {/* Check-in chips */}
-          {checkIns.map(stay => (
-            <div
-              key={`checkin-${stay.id}`}
-              onClick={() => onEdit(stay)}
-              className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 flex items-center gap-2 cursor-pointer active:opacity-80"
-            >
-              <span className="text-base">🔑</span>
-              <span className="text-sm text-purple-700 font-medium">Check in</span>
-              <span className="text-sm text-slate-600 truncate">· {stay.title}</span>
-            </div>
-          ))}
+        {/* Check-in chips */}
+        {checkIns.map(stay => (
+          <div
+            key={`checkin-${stay.id}`}
+            onClick={() => onEdit(stay)}
+            className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 flex items-center gap-2 cursor-pointer active:opacity-80"
+          >
+            <span className="text-base">🔑</span>
+            <span className="text-sm text-purple-700 font-medium">Check in</span>
+            <span className="text-sm text-slate-600 truncate">· {stay.title}</span>
+          </div>
+        ))}
 
-          {/* Timed and other entries */}
-          {sorted.map(entry => (
-            <EntryCard
-              key={entry.id}
-              entry={entry}
-              currency={currency}
-              onEdit={() => onEdit(entry)}
-            />
-          ))}
+        {/* Timed and other entries */}
+        {sorted.map(entry => (
+          <EntryCard key={entry.id} entry={entry} onEdit={() => onEdit(entry)} />
+        ))}
 
-          {!hasContent && (
-            <p className="text-xs text-slate-300 italic py-1">No entries for this day</p>
-          )}
-        </div>
-      )}
+        {!hasContent && (
+          <p className="text-xs text-slate-300 italic py-1">No entries for this day</p>
+        )}
+      </div>
     </div>
   )
 }

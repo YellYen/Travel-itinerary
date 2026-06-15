@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Trip } from '../types'
 import { saveTrip, generateId } from '../storage'
+import { CURRENCIES } from '../currencies'
 
 interface Props {
   existing: Trip | null
@@ -15,7 +16,7 @@ export default function TripModal({ existing, onClose, onSaved, onDelete }: Prop
   const [name, setName] = useState(existing?.name ?? '')
   const [startDate, setStartDate] = useState(existing?.startDate ?? '')
   const [endDate, setEndDate] = useState(existing?.endDate ?? '')
-  const [currency, setCurrency] = useState(existing?.currency ?? '')
+  const [currency, setCurrency] = useState(existing?.currency ?? 'USD')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [error, setError] = useState('')
 
@@ -32,7 +33,7 @@ export default function TripModal({ existing, onClose, onSaved, onDelete }: Prop
       startDate,
       endDate,
       entries: existing?.entries ?? [],
-      currency: currency.trim() || undefined,
+      currency: currency || 'USD',
       notes: notes.trim() || undefined,
     }
     saveTrip(trip)
@@ -73,10 +74,13 @@ export default function TripModal({ existing, onClose, onSaved, onDelete }: Prop
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Currency symbol <span className="text-slate-400 font-normal">(optional)</span>
+              Home currency <span className="text-slate-400 font-normal">(default for new entries)</span>
             </label>
-            <input type="text" value={currency} onChange={e => setCurrency(e.target.value)}
-              placeholder="e.g. $ £ € ¥" className={ic} />
+            <select value={currency} onChange={e => setCurrency(e.target.value)} className={ic}>
+              {CURRENCIES.map(c => (
+                <option key={c.code} value={c.code}>{c.code} – {c.name} ({c.symbol})</option>
+              ))}
+            </select>
           </div>
 
           <div>

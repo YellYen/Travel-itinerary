@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Trip, Entry, StayEntry } from '../types'
 import { deleteEntry, saveEntry, deleteTrip } from '../storage'
+import { inferTripCurrencies, getCurrencySymbol } from '../currencies'
 import DaySection from './DaySection'
+import DayNav from './DayNav'
 import EntryModal from './EntryModal'
 import TripModal from './TripModal'
 
@@ -83,15 +85,19 @@ function downloadIcs(trip: Trip) {
   URL.revokeObjectURL(url)
 }
 
-function totalCost(trip: Trip): number | null {
-  const costs = trip.entries.map(e => e.cost).filter((c): c is number => c != null)
-  return costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null
+function totalsByCurrency(entries: Entry[]): { code: string; amount: number }[] {
+  const map: Record<string, number> = {}
+  for (const e of entries) {
+    if (e.cost == null) continue
+    const code = e.currency ?? 'USD'
+    map[code] = (map[code] ?? 0) + e.cost
+  }
+  return Object.entries(map).map(([code, amount]) => ({ code, amount }))
 }
 
 export default function TripDetail({ trip, onBack, onTripChange }: Props) {
   const today = new Date().toISOString().slice(0, 10)
   const days = eachDay(trip.startDate, trip.endDate)
-
   const todayInTrip = days.includes(today)
   const firstVisibleDay = todayInTrip ? today : days[0]
 
@@ -99,18 +105,45 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const [addForDate, setAddForDate] = useState<string | null>(null)
   const [showTripModal, setShowTripModal] = useState(false)
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
-    const state: Record<string, boolean> = {}
-    for (const d of days) state[d] = d < today
-    return state
-  })
+  const [activeDay, setActiveDay] = useState(firstVisibleDay)
 
+  const navRef = useRef<HTMLDivElement>(null)
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
+  // Track which day is currently at the top as the user scrolls
   useEffect(() => {
-    const el = dayRefs.current[firstVisibleDay]
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [firstVisibleDay])
+    function update() {
+      const navH = navRef.current?.offsetHeight ?? 56
+      let found = days[0]
+      for (const day of days) {
+        const el = dayRefs.current[day]
+        if (el && el.getBoundingClientRect().top <= navH + 4) {
+          found = day
+        } else {
+          break
+        }
+      }
+      setActiveDay(found)
+    }
+    window.addEventListener('scroll', update, { passive: true })
+    update()
+    return () => window.removeEventListener('scroll', update)
+  }, [days])
+
+  // Scroll to the first visible day on mount
+  useEffect(() => {
+    const timer = setTimeout(() => scrollToDay(firstVisibleDay), 60)
+    return () => clearTimeout(timer)
+  }, [])
+
+  function scrollToDay(day: string) {
+    const el = dayRefs.current[day]
+    if (!el) return
+    const navH = navRef.current?.offsetHeight ?? 56
+    const y = el.getBoundingClientRect().top + window.scrollY - navH - 8
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+    setActiveDay(day)
+  }
 
   function handleEditEntry(entry: Entry) {
     setEditEntry(entry)
@@ -136,13 +169,20 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
     onTripChange()
   }
 
-  const cost = totalCost(trip)
-  const currency = trip.currency ?? ''
+  const totals = totalsByCurrency(trip.entries)
+  const tripCurrencies = inferTripCurrencies(trip.entries)
   const startD = new Date(trip.startDate + 'T00:00:00')
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      {/* Sticky day navigator */}
+      <div ref={navRef} className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
+        <div className="max-w-2xl mx-auto">
+          <DayNav days={days} activeDay={activeDay} today={today} onSelectDay={scrollToDay} />
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1 min-w-0 mr-3">
@@ -159,8 +199,10 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
               {new Date(trip.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
               {' – '}
               {new Date(trip.endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              {cost != null && (
-                <span className="ml-3 font-medium text-slate-700">{currency}{cost.toLocaleString()} total</span>
+              {totals.length > 0 && (
+                <span className="ml-3 font-medium text-slate-700">
+                  {totals.map(t => `${getCurrencySymbol(t.code)}${t.amount.toLocaleString()}`).join(' · ')} total
+                </span>
               )}
             </p>
             <button
@@ -220,12 +262,9 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
                   entries={nonStayEntriesOnDay(trip.entries, day)}
                   stayEntries={staysOnDay(trip.entries, day)}
                   checkOutStays={staysCheckingOutOnDay(trip.entries, day)}
-                  currency={currency}
                   isToday={day === today}
-                  isCollapsed={collapsed[day] ?? false}
                   onEdit={handleEditEntry}
                   onAdd={() => handleAddForDay(day)}
-                  onToggleCollapse={() => setCollapsed(c => ({ ...c, [day]: !c[day] }))}
                 />
               </div>
             )
@@ -245,6 +284,7 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
           tripEndDate={trip.endDate}
           existing={editEntry}
           defaultDate={addForDate ?? undefined}
+          availableCurrencies={tripCurrencies}
           onClose={() => { setShowEntryModal(false); setAddForDate(null) }}
           onSaved={handleEntrySaved}
           onDelete={editEntry ? () => {

@@ -1,9 +1,9 @@
 import type { Entry, TravelEntry, StayEntry } from '../types'
+import { getCurrencySymbol } from '../currencies'
 
 interface Props {
   entry: Entry
   isStayBanner?: boolean
-  currency?: string
   onEdit: () => void
 }
 
@@ -64,13 +64,13 @@ function sentenceCase(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export default function EntryCard({ entry, isStayBanner, currency, onEdit }: Props) {
+export default function EntryCard({ entry, isStayBanner, onEdit }: Props) {
   const cfg = TYPE_CONFIG[entry.type]
   const subtitle = entrySubtitle(entry)
   const time = timeDisplay(entry)
 
   const costLabel = entry.cost != null
-    ? `${currency ?? ''}${entry.cost.toLocaleString()}`
+    ? `${getCurrencySymbol(entry.currency ?? 'USD')}${entry.cost.toLocaleString()}`
     : null
 
   if (isStayBanner) {

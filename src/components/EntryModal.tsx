@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { Entry, EntryType, TravelEntry, StayEntry, ExperienceEntry, PlaceEntry, TravelMode, AccommodationType } from '../types'
 import { generateId } from '../storage'
+import { CURRENCIES, getCurrencyByCode } from '../currencies'
 
 interface Props {
   tripStartDate: string
   tripEndDate: string
   existing: Entry | null
   defaultDate?: string
+  availableCurrencies: string[]
   onClose: () => void
   onSaved: (entry: Entry) => void
   onDelete?: () => void
@@ -67,7 +69,7 @@ function parseTo24h(raw: string): string | null {
   return null
 }
 
-export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, onClose, onSaved, onDelete }: Props) {
+export default function EntryModal({ tripStartDate, tripEndDate, existing, defaultDate, availableCurrencies, onClose, onSaved, onDelete }: Props) {
   const [type, setType] = useState<EntryType>(existing?.type ?? 'travel')
   const [title, setTitle] = useState(existing?.title ?? '')
   const [date, setDate] = useState(existing?.date ?? defaultDate ?? tripStartDate)
@@ -75,6 +77,7 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
   const [endTime, setEndTime] = useState(existing?.endTime ?? '')
   const [confirmation, setConfirmation] = useState(existing?.confirmationNumber ?? '')
   const [cost, setCost] = useState(existing?.cost != null ? String(existing.cost) : '')
+  const [currency, setCurrency] = useState(existing?.currency ?? availableCurrencies[0] ?? 'USD')
   const [bookingUrl, setBookingUrl] = useState(existing?.bookingUrl ?? '')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [error, setError] = useState('')
@@ -122,6 +125,7 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
         endTime: parsedEnd ?? undefined,
         confirmationNumber: confirmation.trim() || undefined,
         cost: costVal,
+        currency: costVal != null ? currency : undefined,
         bookingUrl: bookingUrl.trim() || undefined,
         notes: notes.trim() || undefined,
       }
@@ -136,6 +140,7 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
       endTime: parsedEnd ?? undefined,
       confirmationNumber: confirmation.trim() || undefined,
       cost: costVal,
+      currency: costVal != null ? currency : undefined,
       bookingUrl: bookingUrl.trim() || undefined,
       notes: notes.trim() || undefined,
     }
@@ -348,17 +353,33 @@ export default function EntryModal({ tripStartDate, tripEndDate, existing, defau
             </div>
           )}
 
-          {/* Confirmation number + Cost */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass()}>Confirmation # <span className="text-slate-400 font-normal">(optional)</span></label>
-              <input type="text" value={confirmation} onChange={e => setConfirmation(e.target.value)}
-                placeholder="e.g. ABC123" className={inputClass()} />
-            </div>
-            <div>
-              <label className={labelClass()}>Cost <span className="text-slate-400 font-normal">(optional)</span></label>
+          {/* Confirmation number */}
+          <div>
+            <label className={labelClass()}>Confirmation # <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" value={confirmation} onChange={e => setConfirmation(e.target.value)}
+              placeholder="e.g. ABC123" className={inputClass()} />
+          </div>
+
+          {/* Cost + Currency */}
+          <div>
+            <label className={labelClass()}>Cost <span className="text-slate-400 font-normal">(optional)</span></label>
+            <div className="flex gap-2">
               <input type="text" inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)}
-                placeholder="e.g. 120" className={inputClass()} />
+                placeholder="e.g. 12000" className={inputClass('flex-1 min-w-0')} />
+              <select
+                value={currency}
+                onChange={e => setCurrency(e.target.value)}
+                className="border border-slate-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shrink-0"
+              >
+                {availableCurrencies.map(code => {
+                  const c = getCurrencyByCode(code)
+                  return (
+                    <option key={code} value={code}>
+                      {code}{c ? ` (${c.symbol})` : ''}
+                    </option>
+                  )
+                })}
+              </select>
             </div>
           </div>
 

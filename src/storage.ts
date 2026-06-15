@@ -56,6 +56,7 @@ export function seedIfEmpty(): void {
     name: 'Japan Spring Adventure',
     startDate: '2026-06-01',
     endDate: '2026-06-05',
+    currency: 'USD',
     entries: [
       // Stays
       {
@@ -68,6 +69,8 @@ export function seedIfEmpty(): void {
         checkIn: '2026-06-01',
         checkOut: '2026-06-03',
         confirmationNumber: 'SGH-2026-04521',
+        cost: 45000,
+        currency: 'JPY',
       },
       {
         id: 's-stay-2',
@@ -78,6 +81,8 @@ export function seedIfEmpty(): void {
         address: '15 Gion, Higashiyama, Kyoto',
         checkIn: '2026-06-03',
         checkOut: '2026-06-05',
+        cost: 32000,
+        currency: 'JPY',
       },
       // Day 1 — Jun 1
       {
@@ -91,6 +96,8 @@ export function seedIfEmpty(): void {
         destination: 'Tokyo Narita (NRT)',
         startTime: '11:00',
         confirmationNumber: 'JL-9XK2T',
+        cost: 850,
+        currency: 'USD',
       },
       {
         id: 's-place-1',
@@ -109,6 +116,8 @@ export function seedIfEmpty(): void {
         location: 'Tsukiji, Tokyo',
         startTime: '08:00',
         endTime: '09:30',
+        cost: 2800,
+        currency: 'JPY',
       },
       {
         id: 's-place-2',
@@ -130,6 +139,8 @@ export function seedIfEmpty(): void {
         startTime: '14:00',
         endTime: '16:15',
         confirmationNumber: 'JR-NOZOMI-25',
+        cost: 13500,
+        currency: 'JPY',
       },
       // Day 3 — Jun 3
       {
@@ -141,6 +152,8 @@ export function seedIfEmpty(): void {
         startTime: '10:00',
         endTime: '11:30',
         confirmationNumber: 'TC-88721',
+        cost: 3500,
+        currency: 'JPY',
       },
       {
         id: 's-place-3',
@@ -161,6 +174,8 @@ export function seedIfEmpty(): void {
         destination: 'Osaka Namba',
         startTime: '09:30',
         endTime: '10:45',
+        cost: 600,
+        currency: 'JPY',
       },
       {
         id: 's-exp-3',
@@ -171,6 +186,8 @@ export function seedIfEmpty(): void {
         startTime: '13:00',
         endTime: '15:00',
         confirmationNumber: 'OSK-COOK-512',
+        cost: 4500,
+        currency: 'JPY',
       },
       {
         id: 's-ferry-1',
@@ -183,6 +200,8 @@ export function seedIfEmpty(): void {
         startTime: '17:00',
         endTime: '20:30',
         confirmationNumber: 'FERRY-2026-HRJ',
+        cost: 5200,
+        currency: 'JPY',
       },
       // Day 5 — Jun 5
       {
@@ -203,6 +222,8 @@ export function seedIfEmpty(): void {
         destination: 'Osaka Kansai Airport (KIX)',
         startTime: '14:00',
         endTime: '16:30',
+        cost: 3800,
+        currency: 'JPY',
       },
     ],
   }

@@ -11,6 +11,7 @@ interface BaseEntry {
   endTime?: string     // HH:MM local time
   confirmationNumber?: string
   cost?: number
+  currency?: string    // ISO 4217 code e.g. "USD", "JPY"
   bookingUrl?: string
   notes?: string
 }
