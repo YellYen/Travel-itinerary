@@ -6,6 +6,7 @@ import DaySection from './DaySection'
 import DayNav from './DayNav'
 import EntryModal from './EntryModal'
 import TripModal from './TripModal'
+import ImportModal from './ImportModal'
 
 interface Props {
   trip: Trip
@@ -116,6 +117,7 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const [addForDate, setAddForDate] = useState<string | null>(null)
   const [showTripModal, setShowTripModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [activeDay, setActiveDay] = useState(firstVisibleDay)
 
   const navRef = useRef<HTMLDivElement>(null)
@@ -184,6 +186,12 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
     onTripChange()
   }
 
+  function handleImported(entries: Entry[]) {
+    for (const e of entries) saveEntry(trip.id, e)
+    setShowImportModal(false)
+    onTripChange()
+  }
+
   const totals = totalsByCurrency(trip.entries)
   const tripCurrencies = inferTripCurrencies(trip.entries)
   const startD = new Date(trip.startDate + 'T00:00:00')
@@ -213,6 +221,16 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
             <span className="text-xs text-slate-400 shrink-0 hidden sm:block">
               {shortDate(trip.startDate)} – {shortDate(trip.endDate)}
             </span>
+            <button
+              onClick={() => setShowImportModal(true)}
+              title="Import from email"
+              className="text-slate-400 hover:text-blue-600 transition-colors shrink-0 p-0.5"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="2" width="14" height="11" rx="1.5" />
+                <path d="M1 5.5l7 4.5 7-4.5" />
+              </svg>
+            </button>
             <button
               onClick={() => downloadIcs(trip)}
               title="Export to calendar"
@@ -311,6 +329,14 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
             setShowEntryModal(false)
             onTripChange()
           } : undefined}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportModal
+          tripStartDate={trip.startDate}
+          onClose={() => setShowImportModal(false)}
+          onImported={handleImported}
         />
       )}
 
