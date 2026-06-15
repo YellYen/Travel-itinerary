@@ -40,6 +40,10 @@ function nonStayEntriesOnDay(entries: Entry[], day: string): Entry[] {
   return entries.filter(e => e.type !== 'stay' && e.date === day)
 }
 
+function shortDate(d: string): string {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function generateIcs(trip: Trip): string {
   const escape = (s: string) => s.replace(/[,;\\]/g, c => `\\${c}`).replace(/\n/g, '\\n')
   const fmtDate = (d: string) => d.replace(/-/g, '')
@@ -95,6 +99,13 @@ function totalsByCurrency(entries: Entry[]): { code: string; amount: number }[] 
   return Object.entries(map).map(([code, amount]) => ({ code, amount }))
 }
 
+const LEGEND = [
+  { label: 'Travel',     color: 'bg-blue-400' },
+  { label: 'Stay',       color: 'bg-purple-400' },
+  { label: 'Experience', color: 'bg-orange-400' },
+  { label: 'Place',      color: 'bg-green-400' },
+]
+
 export default function TripDetail({ trip, onBack, onTripChange }: Props) {
   const today = new Date().toISOString().slice(0, 10)
   const days = eachDay(trip.startDate, trip.endDate)
@@ -109,11 +120,13 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
 
   const navRef = useRef<HTMLDivElement>(null)
   const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const isProgrammaticScrollRef = useRef(false)
 
-  // Track which day is currently at the top as the user scrolls
+  // Track which day is at the top as the user scrolls (skipped during programmatic scrolls)
   useEffect(() => {
     function update() {
-      const navH = navRef.current?.offsetHeight ?? 56
+      if (isProgrammaticScrollRef.current) return
+      const navH = navRef.current?.offsetHeight ?? 130
       let found = days[0]
       for (const day of days) {
         const el = dayRefs.current[day]
@@ -130,7 +143,7 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
     return () => window.removeEventListener('scroll', update)
   }, [days])
 
-  // Scroll to the first visible day on mount
+  // Scroll to first visible day on mount
   useEffect(() => {
     const timer = setTimeout(() => scrollToDay(firstVisibleDay), 60)
     return () => clearTimeout(timer)
@@ -139,10 +152,12 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
   function scrollToDay(day: string) {
     const el = dayRefs.current[day]
     if (!el) return
-    const navH = navRef.current?.offsetHeight ?? 56
+    const navH = navRef.current?.offsetHeight ?? 130
     const y = el.getBoundingClientRect().top + window.scrollY - navH - 8
-    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+    isProgrammaticScrollRef.current = true
     setActiveDay(day)
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+    setTimeout(() => { isProgrammaticScrollRef.current = false }, 700)
   }
 
   function handleEditEntry(entry: Entry) {
@@ -175,56 +190,74 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sticky day navigator */}
-      <div ref={navRef} className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
+
+      {/* ── Sticky panel ── */}
+      <div ref={navRef} className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-2xl mx-auto">
+
+          {/* Row 1: trip header */}
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1 min-w-0">
+            <button
+              onClick={onBack}
+              className="text-slate-400 hover:text-slate-600 transition-colors text-sm shrink-0"
+            >
+              ← Back
+            </button>
+            <div className="w-px h-4 bg-slate-200 shrink-0" />
+            <h1 className="font-semibold text-slate-800 text-sm truncate flex-1 min-w-0">{trip.name}</h1>
+            <button
+              onClick={() => setShowTripModal(true)}
+              className="text-slate-400 hover:text-blue-600 transition-colors shrink-0 text-sm"
+              title="Edit trip"
+            >✏️</button>
+            <span className="text-xs text-slate-400 shrink-0 hidden sm:block">
+              {shortDate(trip.startDate)} – {shortDate(trip.endDate)}
+            </span>
+            <button
+              onClick={() => downloadIcs(trip)}
+              title="Export to calendar"
+              className="text-slate-400 hover:text-green-600 transition-colors shrink-0 p-0.5"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="2.5" width="14" height="12.5" rx="1.5" />
+                <path d="M1 6.5h14" />
+                <path d="M5 1v3" />
+                <path d="M11 1v3" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Row 2: day strip */}
           <DayNav days={days} activeDay={activeDay} today={today} onSelectDay={scrollToDay} />
+
+          {/* Row 3: legend + totals + add entry */}
+          <div className="flex items-center justify-between px-4 pb-2.5 pt-0.5 gap-2">
+            <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap min-w-0">
+              {LEGEND.map(({ label, color }) => (
+                <span key={label} className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${color}`} />
+                  {label}
+                </span>
+              ))}
+              {totals.length > 0 && (
+                <span className="text-slate-600 font-medium shrink-0">
+                  · {totals.map(t => `${getCurrencySymbol(t.code)}${t.amount.toLocaleString()}`).join(' · ')}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => { setEditEntry(null); setAddForDate(null); setShowEntryModal(true) }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 shrink-0"
+            >
+              <span className="text-base leading-none">+</span> Add entry
+            </button>
+          </div>
+
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-8">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1 min-w-0 mr-3">
-            <button onClick={onBack}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors mb-2 flex items-center gap-1">
-              ← All trips
-            </button>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-800 truncate">{trip.name}</h1>
-              <button onClick={() => setShowTripModal(true)}
-                className="text-slate-400 hover:text-blue-600 transition-colors p-1 shrink-0" title="Edit trip">✏️</button>
-            </div>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {new Date(trip.startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-              {' – '}
-              {new Date(trip.endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              {totals.length > 0 && (
-                <span className="ml-3 font-medium text-slate-700">
-                  {totals.map(t => `${getCurrencySymbol(t.code)}${t.amount.toLocaleString()}`).join(' · ')} total
-                </span>
-              )}
-            </p>
-            <button
-              onClick={() => downloadIcs(trip)}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs border border-slate-200 text-slate-500 hover:border-green-400 hover:text-green-600 px-2.5 py-1 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="0.75" y="1.75" width="10.5" height="9.5" rx="1.25" />
-                <path d="M0.75 5h10.5" />
-                <path d="M3.5 0.75v2" />
-                <path d="M8.5 0.75v2" />
-              </svg>
-              Export to calendar
-            </button>
-          </div>
-          <button
-            onClick={() => { setEditEntry(null); setAddForDate(null); setShowEntryModal(true) }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 shrink-0"
-          >
-            <span className="text-base leading-none">+</span> Add entry
-          </button>
-        </div>
+      {/* ── Scrollable content ── */}
+      <div className="max-w-2xl mx-auto px-4 pt-5 pb-8">
 
         {/* Trip notes */}
         {trip.notes && (
@@ -232,21 +265,6 @@ export default function TripDetail({ trip, onBack, onTripChange }: Props) {
             {trip.notes}
           </div>
         )}
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-3 mb-6 text-xs text-slate-500">
-          {[
-            { label: 'Travel', color: 'bg-blue-400' },
-            { label: 'Stay', color: 'bg-purple-400' },
-            { label: 'Experience', color: 'bg-orange-400' },
-            { label: 'Place', color: 'bg-green-400' },
-          ].map(({ label, color }) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${color}`} />
-              {label}
-            </span>
-          ))}
-        </div>
 
         {/* Timeline */}
         <div>
